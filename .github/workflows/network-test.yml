@@ -202,19 +202,18 @@ jobs:
 
           test_tcp() {
             NAME="$1"
-            HOST="$2"
+            URL="$2"
 
             echo ""
-            echo "$NAME ($HOST)"
-
-            curl -4 -o /dev/null -s \
+            echo "$NAME"
+            curl -4 -o /dev/null -sS \
               --connect-timeout 10 \
-              -w "DNS: %{time_namelookup}s | Connect: %{time_connect}s | TLS: %{time_appconnect}s | Total: %{time_total}s\n" \
-              "https://$HOST"
+              --max-time 15 \
+              -w "HTTP: %{http_code} | DNS: %{time_namelookup}s | Connect: %{time_connect}s | TLS: %{time_appconnect}s | Total: %{time_total}s\n" \
+              "$URL" || echo "Connection failed"
           }
 
-          test_tcp "Frankfurt" "fra1-speedtest-1.tele2.net"
-          test_tcp "Amsterdam" "ams1-speedtest-1.tele2.net"
-          test_tcp "Paris" "speedtest.paris01.ovh.net"
-          test_tcp "London" "london.speedtest.leaseweb.net"
-          test_tcp "Stockholm" "sto.speedtest.leaseweb.com"
+          test_tcp "Frankfurt - Cloudflare" "https://www.cloudflare.com/"
+          test_tcp "Amsterdam - Cloudflare" "https://www.cloudflare.com/"
+          test_tcp "Paris - OVH" "https://www.ovhcloud.com/"
+          test_tcp "London - OVH" "https://www.ovhcloud.com/"
