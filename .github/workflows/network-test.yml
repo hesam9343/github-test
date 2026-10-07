@@ -192,3 +192,29 @@ jobs:
           echo "This workflow is only a network diagnostic test."
           echo
           echo "Send the complete Actions log for analysis."
+
+
+      - name: Europe TCP Latency Test
+        run: |
+          echo "========================================"
+          echo "EUROPE TCP LATENCY TEST"
+          echo "========================================"
+
+          test_tcp() {
+            NAME="$1"
+            HOST="$2"
+
+            echo ""
+            echo "$NAME ($HOST)"
+
+            curl -4 -o /dev/null -s \
+              --connect-timeout 10 \
+              -w "DNS: %{time_namelookup}s | Connect: %{time_connect}s | TLS: %{time_appconnect}s | Total: %{time_total}s\n" \
+              "https://$HOST"
+          }
+
+          test_tcp "Frankfurt" "fra1-speedtest-1.tele2.net"
+          test_tcp "Amsterdam" "ams1-speedtest-1.tele2.net"
+          test_tcp "Paris" "speedtest.paris01.ovh.net"
+          test_tcp "London" "london.speedtest.leaseweb.net"
+          test_tcp "Stockholm" "sto.speedtest.leaseweb.com"
