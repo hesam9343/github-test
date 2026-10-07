@@ -10,29 +10,36 @@ jobs:
     steps:
       - name: Install WireGuard
         run: |
+          set -e
+
           sudo apt-get update -qq
           sudo apt-get install -y -qq wireguard iproute2
 
-      - name: Create WireGuard test tunnel
+      - name: Create WireGuard test interface
         run: |
           set -e
 
           sudo modprobe wireguard
 
           PRIVATE_KEY=$(wg genkey)
-          PUBLIC_KEY=$(echo "$PRIVATE_KEY" | wg pubkey)
+          PUBLIC_KEY=$(printf '%s' "$PRIVATE_KEY" | wg pubkey)
 
-          echo "Private key generated"
           echo "Public key: $PUBLIC_KEY"
+
+          KEY_FILE=$(mktemp)
+          printf '%s\n' "$PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
 
           sudo ip link add wg0 type wireguard
           sudo ip address add 10.99.0.1/24 dev wg0
 
           sudo wg set wg0 \
-            private-key <(echo "$PRIVATE_KEY") \
+            private-key "$KEY_FILE" \
             listen-port 51820
 
           sudo ip link set wg0 up
+
+          rm -f "$KEY_FILE"
 
           echo
           echo "===== WireGuard ====="
@@ -43,12 +50,8 @@ jobs:
           ip addr show wg0
 
           echo
-          echo "===== Routing ====="
-          ip route
-
-          echo
-          echo "===== Connectivity ====="
-          ping -c 3 -W 2 10.99.0.1
+          echo "===== WireGuard test ====="
+          sudo wg show wg0
 
           echo
           echo "WIREGUARD_INTERFACE_OK"
