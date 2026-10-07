@@ -247,3 +247,60 @@ jobs:
           test_host "Paris" "speedtest.paris01.ovh.net"
           test_host "Frankfurt" "fra.speedtest.leaseweb.net"
           test_host "Amsterdam" "ams.speedtest.leaseweb.net"
+
+
+      - name: Europe iPerf3 Network Test
+        run: |
+          echo "========================================"
+          echo "EUROPE IPERF3 NETWORK TEST"
+          echo "========================================"
+
+          if ! command -v iperf3 >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq iperf3
+          fi
+
+          test_server() {
+            NAME="$1"
+            HOST="$2"
+
+            echo ""
+            echo "========================================"
+            echo "$NAME"
+            echo "Host: $HOST"
+            echo "========================================"
+
+            echo "--- TCP ---"
+            iperf3 -c "$HOST" -p 5201 -t 5 -J 2>/dev/null \
+              | python3 -c '
+          import sys,json
+          try:
+              d=json.load(sys.stdin)
+              s=d["end"]["streams"][0]["sender"]
+              print("Retransmits:", s.get("retransmits"))
+              print("RTT avg:", s.get("rtt"))
+              print("TCP Mbps:", round(s.get("bits_per_second",0)/1e6,2))
+          except:
+              print("TCP test failed")
+          '
+
+            echo "--- UDP ---"
+            iperf3 -c "$HOST" -p 5201 -u -b 10M -t 5 -J 2>/dev/null \
+              | python3 -c '
+          import sys,json
+          try:
+              d=json.load(sys.stdin)
+              s=d["end"]["streams"][0]["udp"]
+              print("Jitter:", s.get("jitter_ms"), "ms")
+              print("Lost:", s.get("lost_percent"), "%")
+              print("UDP Mbps:", round(s.get("bits_per_second",0)/1e6,2))
+          except:
+              print("UDP test failed")
+          '
+          }
+
+          test_server "London LON-01" "speedtest.lon1.uk.leaseweb.net"
+          test_server "London LON-12" "speedtest.lon12.uk.leaseweb.net"
+          test_server "Frankfurt FRA-01" "speedtest.fra1.de.leaseweb.net"
+          test_server "Amsterdam AMS-01" "speedtest.ams1.nl.leaseweb.net"
+          test_server "Amsterdam AMS-02" "speedtest.ams2.nl.leaseweb.net"
