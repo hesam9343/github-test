@@ -217,3 +217,33 @@ jobs:
           test_tcp "Amsterdam - Cloudflare" "https://www.cloudflare.com/"
           test_tcp "Paris - OVH" "https://www.ovhcloud.com/"
           test_tcp "London - OVH" "https://www.ovhcloud.com/"
+
+      - name: Europe Network Quality Test
+        run: |
+          echo "========================================"
+          echo "EUROPE NETWORK QUALITY TEST"
+          echo "========================================"
+
+          test_host() {
+            NAME="$1"
+            HOST="$2"
+
+            echo ""
+            echo "[$NAME]"
+            echo "Host: $HOST"
+
+            for i in 1 2 3 4 5; do
+              RESULT=$(curl -4 -o /dev/null -sS \
+                --connect-timeout 10 \
+                --max-time 15 \
+                -w "%{time_connect} %{time_appconnect} %{time_total}" \
+                "https://$HOST/" 2>/dev/null || echo "FAILED")
+
+              echo "Test $i: $RESULT"
+            done
+          }
+
+          test_host "London" "london.speedtest.leaseweb.net"
+          test_host "Paris" "speedtest.paris01.ovh.net"
+          test_host "Frankfurt" "fra.speedtest.leaseweb.net"
+          test_host "Amsterdam" "ams.speedtest.leaseweb.net"
