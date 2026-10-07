@@ -1,0 +1,194 @@
+name: GitHub Network Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  network-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: System information
+        run: |
+          echo "========================================"
+          echo "SYSTEM INFORMATION"
+          echo "========================================"
+          uname -a
+          echo
+          lsb_release -a 2>/dev/null || cat /etc/os-release
+          echo
+          echo "CPU:"
+          nproc
+          echo
+          echo "----------------------------------------"
+
+      - name: Public IPv4
+        run: |
+          echo "========================================"
+          echo "PUBLIC IPv4"
+          echo "========================================"
+
+          IP=$(curl -4 -s --max-time 10 https://api.ipify.org)
+
+          echo "IPv4: $IP"
+          echo
+
+          echo "IP information:"
+          curl -4 -s --max-time 10 "https://ipinfo.io/$IP/json" || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: Public IPv6
+        run: |
+          echo "========================================"
+          echo "PUBLIC IPv6"
+          echo "========================================"
+
+          curl -6 -s --max-time 10 https://api6.ipify.org || echo "No IPv6"
+          echo
+          echo "----------------------------------------"
+
+      - name: Network location
+        run: |
+          echo "========================================"
+          echo "NETWORK LOCATION"
+          echo "========================================"
+
+          echo "ipinfo.io:"
+          curl -4 -s --max-time 10 https://ipinfo.io/json || true
+
+          echo
+          echo
+          echo "ip-api.com:"
+          curl -4 -s --max-time 10 \
+            "http://ip-api.com/json/?fields=status,message,country,countryCode,regionName,city,isp,org,as,query" || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: DNS test
+        run: |
+          echo "========================================"
+          echo "DNS TEST"
+          echo "========================================"
+
+          echo "Google DNS:"
+          time nslookup google.com 8.8.8.8 || true
+
+          echo
+          echo "Cloudflare DNS:"
+          time nslookup google.com 1.1.1.1 || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: Ping test
+        run: |
+          echo "========================================"
+          echo "PING TEST"
+          echo "========================================"
+
+          echo
+          echo "Cloudflare 1.1.1.1"
+          ping -c 10 -W 3 1.1.1.1 || true
+
+          echo
+          echo "Google 8.8.8.8"
+          ping -c 10 -W 3 8.8.8.8 || true
+
+          echo
+          echo "Google DNS 8.8.4.4"
+          ping -c 10 -W 3 8.8.4.4 || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: TCP latency test
+        run: |
+          echo "========================================"
+          echo "TCP LATENCY TEST"
+          echo "========================================"
+
+          echo
+          echo "Cloudflare HTTPS:"
+          curl -4 -o /dev/null -s \
+            -w "DNS: %{time_namelookup}s | Connect: %{time_connect}s | TLS: %{time_appconnect}s | Total: %{time_total}s\n" \
+            https://1.1.1.1/
+
+          echo
+          echo "Google HTTPS:"
+          curl -4 -o /dev/null -s \
+            -w "DNS: %{time_namelookup}s | Connect: %{time_connect}s | TLS: %{time_appconnect}s | Total: %{time_total}s\n" \
+            https://www.google.com/
+
+          echo
+          echo "----------------------------------------"
+
+      - name: Install traceroute
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y traceroute mtr-tiny -qq
+
+      - name: Traceroute Cloudflare
+        run: |
+          echo "========================================"
+          echo "TRACEROUTE TO CLOUDFLARE"
+          echo "========================================"
+
+          traceroute -4 -n -w 2 -q 1 -m 20 1.1.1.1 || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: Traceroute Google
+        run: |
+          echo "========================================"
+          echo "TRACEROUTE TO GOOGLE"
+          echo "========================================"
+
+          traceroute -4 -n -w 2 -q 1 -m 20 8.8.8.8 || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: MTR test
+        run: |
+          echo "========================================"
+          echo "MTR TEST"
+          echo "========================================"
+
+          mtr -4 -r -c 20 -w 1.1.1.1 || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: Download speed test
+        run: |
+          echo "========================================"
+          echo "DOWNLOAD TEST"
+          echo "========================================"
+
+          echo "Downloading 10 MB test file..."
+
+          curl -L \
+            --max-time 60 \
+            -o /dev/null \
+            -s \
+            -w "Downloaded: %{size_download} bytes\nSpeed: %{speed_download} bytes/sec\nTime: %{time_total} sec\n" \
+            https://speed.hetzner.de/10MB.bin || true
+
+          echo
+          echo "----------------------------------------"
+
+      - name: Final summary
+        run: |
+          echo "========================================"
+          echo "TEST FINISHED"
+          echo "========================================"
+          echo
+          echo "IMPORTANT:"
+          echo "GitHub-hosted runner IPs are temporary."
+          echo "This workflow is only a network diagnostic test."
+          echo
+          echo "Send the complete Actions log for analysis."
