@@ -1,0 +1,59 @@
+name: WireGuard Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  wireguard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install WireGuard
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq wireguard iproute2
+
+      - name: Create WireGuard test tunnel
+        run: |
+          set -e
+
+          sudo modprobe wireguard
+
+          PRIVATE_KEY=$(wg genkey)
+          PUBLIC_KEY=$(echo "$PRIVATE_KEY" | wg pubkey)
+
+          echo "Private key generated"
+          echo "Public key: $PUBLIC_KEY"
+
+          sudo ip link add wg0 type wireguard
+          sudo ip address add 10.99.0.1/24 dev wg0
+
+          sudo wg set wg0 \
+            private-key <(echo "$PRIVATE_KEY") \
+            listen-port 51820
+
+          sudo ip link set wg0 up
+
+          echo
+          echo "===== WireGuard ====="
+          sudo wg show
+
+          echo
+          echo "===== Interface ====="
+          ip addr show wg0
+
+          echo
+          echo "===== Routing ====="
+          ip route
+
+          echo
+          echo "===== Connectivity ====="
+          ping -c 3 -W 2 10.99.0.1
+
+          echo
+          echo "WIREGUARD_INTERFACE_OK"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo ip link delete wg0 2>/dev/null || true
